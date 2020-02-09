@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -21,6 +20,7 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
+import java.util.List;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -58,7 +58,7 @@ public class UserServiceIT {
 
     @BeforeEach
     public void init() {
-        userRepository.deleteAll();
+        userRepository.deleteAll().block();
         user = new User();
         user.setLogin(DEFAULT_LOGIN);
         user.setActivated(true);
@@ -80,12 +80,13 @@ public class UserServiceIT {
     public void assertThatAnonymousUserIsNotGet() {
         user.setId(Constants.ANONYMOUS_USER);
         user.setLogin(Constants.ANONYMOUS_USER);
-        if (!userRepository.findOneByLogin(Constants.ANONYMOUS_USER).isPresent()) {
-            userRepository.save(user);
+        if (!userRepository.findOneByLogin(Constants.ANONYMOUS_USER).blockOptional().isPresent()) {
+            userRepository.save(user).block();
         }
-        final PageRequest pageable = PageRequest.of(0, (int) userRepository.count());
-        final Page<UserDTO> allManagedUsers = userService.getAllManagedUsers(pageable);
-        assertThat(allManagedUsers.getContent().stream()
+        final PageRequest pageable = PageRequest.of(0, (int) userRepository.count().block().intValue());
+        final List<UserDTO> allManagedUsers = userService.getAllManagedUsers(pageable)
+            .collectList().block();
+        assertThat(allManagedUsers.stream()
             .noneMatch(user -> Constants.ANONYMOUS_USER.equals(user.getLogin())))
             .isTrue();
     }
@@ -93,7 +94,7 @@ public class UserServiceIT {
     @Test
     public void testDefaultUserDetails() {
         OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
-        UserDTO userDTO = userService.getUserFromAuthentication(authentication);
+        UserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
 
         assertThat(userDTO.getLogin()).isEqualTo(DEFAULT_LOGIN);
         assertThat(userDTO.getFirstName()).isEqualTo(DEFAULT_FIRSTNAME);
@@ -110,7 +111,7 @@ public class UserServiceIT {
         userDetails.put("preferred_username", "TEST");
 
         OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
-        UserDTO userDTO = userService.getUserFromAuthentication(authentication);
+        UserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
 
         assertThat(userDTO.getLogin()).isEqualTo("test");
     }
@@ -121,7 +122,7 @@ public class UserServiceIT {
         userDetails.put("locale", "en-US");
 
         OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
-        UserDTO userDTO = userService.getUserFromAuthentication(authentication);
+        UserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
 
         assertThat(userDTO.getLangKey()).isEqualTo(DEFAULT_LANGKEY);
     }
@@ -131,7 +132,7 @@ public class UserServiceIT {
         userDetails.put("locale", "it-IT");
 
         OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
-        UserDTO userDTO = userService.getUserFromAuthentication(authentication);
+        UserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
 
         assertThat(userDTO.getLangKey()).isEqualTo("it");
     }
@@ -141,7 +142,7 @@ public class UserServiceIT {
         userDetails.put("locale", "en_US");
 
         OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
-        UserDTO userDTO = userService.getUserFromAuthentication(authentication);
+        UserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
 
         assertThat(userDTO.getLangKey()).isEqualTo("en");
     }
@@ -151,7 +152,7 @@ public class UserServiceIT {
         userDetails.put("locale", "en-US");
 
         OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
-        UserDTO userDTO = userService.getUserFromAuthentication(authentication);
+        UserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
 
         assertThat(userDTO.getLangKey()).isEqualTo("en");
     }

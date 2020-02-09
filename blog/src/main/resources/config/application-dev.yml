@@ -44,7 +44,7 @@ spring:
       indent-output: true
   data:
     mongodb:
-      uri: mongodb://localhost:27017
+      uri: mongodb://localhost:27017/?waitQueueMultiple=1000
       database: blog
   mail:
     host: localhost

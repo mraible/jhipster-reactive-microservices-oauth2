@@ -2,6 +2,7 @@ package com.mycompany.myapp.web.rest;
 
 import com.mycompany.myapp.BlogApp;
 import com.mycompany.myapp.config.TestSecurityConfiguration;
+import com.mycompany.myapp.config.ReactivePageableHandlerMethodArgumentResolver;
 import com.mycompany.myapp.domain.Authority;
 import com.mycompany.myapp.domain.User;
 import com.mycompany.myapp.repository.UserRepository;
@@ -16,20 +17,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.Instant;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasItems;
-import static org.hamcrest.Matchers.hasItem;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * Integration tests for the {@link UserResource} REST controller.
@@ -61,15 +55,9 @@ public class UserResourceIT {
     private UserMapper userMapper;
 
     @Autowired
-    private MappingJackson2HttpMessageConverter jacksonMessageConverter;
-
-    @Autowired
-    private PageableHandlerMethodArgumentResolver pageableArgumentResolver;
-
-    @Autowired
     private ExceptionTranslator exceptionTranslator;
 
-    private MockMvc restUserMockMvc;
+    private WebTestClient webTestClient;
 
     private User user;
 
@@ -77,10 +65,9 @@ public class UserResourceIT {
     public void setup() {
         UserResource userResource = new UserResource(userService);
 
-        this.restUserMockMvc = MockMvcBuilders.standaloneSetup(userResource)
-            .setCustomArgumentResolvers(pageableArgumentResolver)
-            .setControllerAdvice(exceptionTranslator)
-            .setMessageConverters(jacksonMessageConverter)
+        this.webTestClient = WebTestClient.bindToController(userResource)
+            .argumentResolvers(configurer -> configurer.addCustomResolver(new ReactivePageableHandlerMethodArgumentResolver()))
+            .controllerAdvice(exceptionTranslator)
             .build();
     }
 
@@ -105,50 +92,56 @@ public class UserResourceIT {
 
     @BeforeEach
     public void initTest() {
-        userRepository.deleteAll();
+        userRepository.deleteAll().block();
         user = createEntity();
     }
 
     @Test
-    public void getAllUsers() throws Exception {
+    public void getAllUsers() {
         // Initialize the database
-        userRepository.save(user);
+        userRepository.save(user).block();
 
         // Get all the users
-        restUserMockMvc.perform(get("/api/users")
-            .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(jsonPath("$.[*].login").value(hasItem(DEFAULT_LOGIN)))
-            .andExpect(jsonPath("$.[*].firstName").value(hasItem(DEFAULT_FIRSTNAME)))
-            .andExpect(jsonPath("$.[*].lastName").value(hasItem(DEFAULT_LASTNAME)))
-            .andExpect(jsonPath("$.[*].email").value(hasItem(DEFAULT_EMAIL)))
-            .andExpect(jsonPath("$.[*].imageUrl").value(hasItem(DEFAULT_IMAGEURL)))
-            .andExpect(jsonPath("$.[*].langKey").value(hasItem(DEFAULT_LANGKEY)));
+        UserDTO foundUser = webTestClient.get().uri("/api/users?sort=createdDate,DESC")
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk()
+            .expectHeader().contentType(MediaType.APPLICATION_JSON)
+            .returnResult(UserDTO.class).getResponseBody().blockFirst();
+
+        assertThat(foundUser.getLogin()).isEqualTo(DEFAULT_LOGIN);
+        assertThat(foundUser.getFirstName()).isEqualTo(DEFAULT_FIRSTNAME);
+        assertThat(foundUser.getLastName()).isEqualTo(DEFAULT_LASTNAME);
+        assertThat(foundUser.getEmail()).isEqualTo(DEFAULT_EMAIL);
+        assertThat(foundUser.getImageUrl()).isEqualTo(DEFAULT_IMAGEURL);
+        assertThat(foundUser.getLangKey()).isEqualTo(DEFAULT_LANGKEY);
     }
 
     @Test
-    public void getUser() throws Exception {
+    public void getUser() {
         // Initialize the database
-        userRepository.save(user);
+        userRepository.save(user).block();
 
         // Get the user
-        restUserMockMvc.perform(get("/api/users/{login}", user.getLogin()))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(jsonPath("$.login").value(user.getLogin()))
-            .andExpect(jsonPath("$.firstName").value(DEFAULT_FIRSTNAME))
-            .andExpect(jsonPath("$.lastName").value(DEFAULT_LASTNAME))
-            .andExpect(jsonPath("$.email").value(DEFAULT_EMAIL))
-            .andExpect(jsonPath("$.imageUrl").value(DEFAULT_IMAGEURL))
-            .andExpect(jsonPath("$.langKey").value(DEFAULT_LANGKEY));
+        webTestClient.get().uri("/api/users/{login}", user.getLogin())
+            .exchange()
+            .expectStatus().isOk()
+            .expectHeader().contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.login").isEqualTo(user.getLogin())
+            .jsonPath("$.firstName").isEqualTo(DEFAULT_FIRSTNAME)
+            .jsonPath("$.lastName").isEqualTo(DEFAULT_LASTNAME)
+            .jsonPath("$.email").isEqualTo(DEFAULT_EMAIL)
+            .jsonPath("$.imageUrl").isEqualTo(DEFAULT_IMAGEURL)
+            .jsonPath("$.langKey").isEqualTo(DEFAULT_LANGKEY);
 
     }
 
     @Test
-    public void getNonExistingUser() throws Exception {
-        restUserMockMvc.perform(get("/api/users/unknown"))
-            .andExpect(status().isNotFound());
+    public void getNonExistingUser() {
+        webTestClient.get().uri("/api/users/unknown")
+            .exchange()
+            .expectStatus().isNotFound();
     }
 
     @Test

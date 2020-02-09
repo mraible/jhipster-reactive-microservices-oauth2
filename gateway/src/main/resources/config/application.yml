@@ -98,13 +98,13 @@ spring:
     name: jhipster
   cloud:
     gateway:
+      default-filters:
+        - TokenRelay
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
-          route-id-prefix: /services
-          filters:
-            - TokenRelay=
+          route-id-prefix: /services/
       httpclient:
         pool:
           max-connections: 1000
