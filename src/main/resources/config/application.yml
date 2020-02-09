@@ -40,15 +40,6 @@ eureka:
 ribbon:
   eureka:
     enabled: true
-# See http://cloud.spring.io/spring-cloud-netflix/spring-cloud-netflix.html
-zuul: # those values must be configured depending on the application specific needs
-  sensitive-headers: Cookie,Set-Cookie #see https://github.com/spring-cloud/spring-cloud-netflix/issues/3126
-  host:
-    max-total-connections: 1000
-    max-per-route-connections: 100
-  prefix: /services
-  semaphore:
-    max-semaphores: 500
 
 # See https://github.com/Netflix/Hystrix/wiki/Configuration
 hystrix:
@@ -98,11 +89,25 @@ management:
       application: ${spring.application.name}
     web:
       server:
-        auto-time-requests: true
+        request:
+          autotime:
+            enabled: true
 
 spring:
   application:
     name: jhipster
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+          route-id-prefix: /services
+          filters:
+            - TokenRelay=
+      httpclient:
+        pool:
+          max-connections: 1000
   jmx:
     enabled: false
   messages:

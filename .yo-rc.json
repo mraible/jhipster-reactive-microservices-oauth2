@@ -2,7 +2,8 @@
   "generator-jhipster": {
     "promptValues": {
       "packageName": "com.mycompany.myapp",
-      "nativeLanguage": "en"
+      "nativeLanguage": "en",
+      "microservicePath": "../blog"
     },
     "jhipsterVersion": "6.6.0",
     "applicationType": "gateway",

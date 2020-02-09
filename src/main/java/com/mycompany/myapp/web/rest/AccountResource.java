@@ -1,6 +1,5 @@
 package com.mycompany.myapp.web.rest;
 
-
 import com.mycompany.myapp.security.SecurityUtils;
 import com.mycompany.myapp.service.UserService;
 import com.mycompany.myapp.service.dto.UserDTO;

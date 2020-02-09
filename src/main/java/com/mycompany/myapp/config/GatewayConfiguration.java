@@ -1,32 +1,20 @@
 package com.mycompany.myapp.config;
 
-import io.github.jhipster.config.JHipsterProperties;
-
-import com.mycompany.myapp.gateway.accesscontrol.AccessControlFilter;
-import com.mycompany.myapp.gateway.responserewriting.SwaggerBasePathRewritingFilter;
-import org.springframework.cloud.netflix.zuul.filters.RouteLocator;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class GatewayConfiguration {
 
-    @Configuration
-    public static class SwaggerBasePathRewritingConfiguration {
-
-        @Bean
-        public SwaggerBasePathRewritingFilter swaggerBasePathRewritingFilter() {
-            return new SwaggerBasePathRewritingFilter();
-        }
+    @Bean
+    public RouteLocator myRoutes(RouteLocatorBuilder builder) {
+        return builder.routes()
+            .route(p -> p
+                .path("/get")
+                .filters(f -> f.addRequestHeader("Hello", "World"))
+                .uri("http://httpbin.org:80"))
+            .build();
     }
-
-    @Configuration
-    public static class AccessControlFilterConfiguration {
-
-        @Bean
-        public AccessControlFilter accessControlFilter(RouteLocator routeLocator, JHipsterProperties jHipsterProperties) {
-            return new AccessControlFilter(routeLocator, jHipsterProperties);
-        }
-    }
-
 }
