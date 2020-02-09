@@ -1,0 +1,41 @@
+{
+  "generator-jhipster": {
+    "promptValues": {
+      "packageName": "com.mycompany.myapp",
+      "nativeLanguage": "en"
+    },
+    "jhipsterVersion": "6.6.0",
+    "applicationType": "microservice",
+    "baseName": "blog",
+    "packageName": "com.mycompany.myapp",
+    "packageFolder": "com/mycompany/myapp",
+    "serverPort": "8081",
+    "authenticationType": "oauth2",
+    "cacheProvider": "no",
+    "enableHibernateCache": false,
+    "websocket": false,
+    "databaseType": "mongodb",
+    "devDatabaseType": "mongodb",
+    "prodDatabaseType": "mongodb",
+    "searchEngine": false,
+    "messageBroker": false,
+    "serviceDiscoveryType": "eureka",
+    "buildTool": "maven",
+    "enableSwaggerCodegen": false,
+    "jwtSecretKey": "OWQzYzA3MTg1YWRhYmYxZGQ5NTc1ZTMzYTFhN2MwMGY0Yjc2NWIxYTVmYzY4NDViNGFkNDkxZGY1ODFjZWViMDQ3Zjk4NzFiMTBmMzJmMzQ5MDkyMTg4ZDM1NDMyMzE5YmIyYTZmNGVlZTU3NzI5ZjRlNDEzYmFkYzQxMGJmMDQ=",
+    "embeddableLaunchScript": false,
+    "creationTimestamp": 1581187844684,
+    "testFrameworks": [],
+    "jhiPrefix": "jhi",
+    "entitySuffix": "",
+    "dtoSuffix": "DTO",
+    "otherModules": [],
+    "enableTranslation": true,
+    "clientPackageManager": "npm",
+    "nativeLanguage": "en",
+    "languages": ["en"],
+    "blueprints": [],
+    "skipClient": true,
+    "skipUserManagement": true
+  }
+}
