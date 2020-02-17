@@ -104,7 +104,15 @@ spring:
         locator:
           enabled: true
           lower-case-service-id: true
-          route-id-prefix: /services/
+          predicates:
+            - name: Path
+              args:
+                pattern: "'/services/'+serviceId.toLowerCase()+'/**'"
+          filters:
+            - name: RewritePath
+              args:
+                regexp: "'/services/' + serviceId.toLowerCase() + '/(?<remaining>.*)'"
+                replacement: "'/${remaining}'"
       httpclient:
         pool:
           max-connections: 1000
