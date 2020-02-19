@@ -23,6 +23,9 @@ eureka:
 spring:
   application:
     name: jhipster
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.gateway.config.GatewayMetricsAutoConfiguration
   jackson:
     serialization:
       write-durations-as-timestamps: false
