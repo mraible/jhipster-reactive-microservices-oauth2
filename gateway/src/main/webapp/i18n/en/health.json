@@ -18,7 +18,8 @@
       "diskSpace": "Disk space",
       "mail": "Email",
       "ping": "Application",
-      "mongo": "MongoDB"
+      "mongo": "MongoDB",
+      "reactiveDiscoveryClients": "Microservice Discovery Clients"
     },
     "table": {
       "service": "Service name",
