@@ -61,8 +61,7 @@ public class WebConfigurer implements WebFluxConfigurer {
     }
 
     @Bean
-    @Order(-2)
-    // The handler must have precedence over WebFluxResponseStatusExceptionHandler and Spring Boot's ErrorWebExceptionHandler
+    @Order(-2) // The handler must have precedence over WebFluxResponseStatusExceptionHandler and Spring Boot's ErrorWebExceptionHandler
     public WebExceptionHandler problemExceptionHandler(ObjectMapper mapper, ProblemHandling problemHandling) {
         return new ProblemExceptionHandler(mapper, problemHandling);
     }
@@ -82,7 +81,6 @@ public class WebConfigurer implements WebFluxConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-
         registry.addResourceHandler("/swagger-ui.html**")
             .addResourceLocations("classpath:/META-INF/resources/");
 

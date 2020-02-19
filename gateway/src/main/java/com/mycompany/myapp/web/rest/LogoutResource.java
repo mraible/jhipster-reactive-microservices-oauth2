@@ -17,7 +17,7 @@ import java.util.Map;
  */
 @RestController
 public class LogoutResource {
-    private Mono<ClientRegistration> registration;
+    private final Mono<ClientRegistration> registration;
 
     public LogoutResource(ReactiveClientRegistrationRepository registrations) {
         this.registration = registrations.findByRegistrationId("oidc");

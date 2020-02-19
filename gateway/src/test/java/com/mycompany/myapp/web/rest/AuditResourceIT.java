@@ -7,6 +7,7 @@ import io.github.jhipster.config.JHipsterProperties;
 import com.mycompany.myapp.config.audit.AuditEventConverter;
 import com.mycompany.myapp.domain.PersistentAuditEvent;
 import com.mycompany.myapp.repository.PersistenceAuditEventRepository;
+import com.mycompany.myapp.security.AuthoritiesConstants;
 
 import com.mycompany.myapp.service.AuditEventService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,10 +15,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.format.datetime.standard.DateTimeFormatterRegistrar;
 import org.springframework.format.support.FormattingConversionService;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.Instant;
@@ -28,6 +31,8 @@ import static org.hamcrest.Matchers.hasItem;
 /**
  * Integration tests for the {@link AuditResource} REST controller.
  */
+@AutoConfigureWebTestClient
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 @SpringBootTest(classes = {JhipsterApp.class, TestSecurityConfiguration.class})
 public class AuditResourceIT {
 
@@ -39,35 +44,10 @@ public class AuditResourceIT {
     @Autowired
     private PersistenceAuditEventRepository auditEventRepository;
 
-    @Autowired
-    private AuditEventConverter auditEventConverter;
-
-    @Autowired
-    private JHipsterProperties jhipsterProperties;
-
-    @Autowired
-    @Qualifier("webFluxConversionService")
-    private FormattingConversionService formattingConversionService;
-
     private PersistentAuditEvent auditEvent;
 
+    @Autowired
     private WebTestClient webTestClient;
-
-    @BeforeEach
-    public void setup() {
-        MockitoAnnotations.initMocks(this);
-        AuditEventService auditEventService =
-            new AuditEventService(auditEventRepository, auditEventConverter, jhipsterProperties);
-        AuditResource auditResource = new AuditResource(auditEventService);
-        this.webTestClient = WebTestClient.bindToController(auditResource)
-            .argumentResolvers(configurer -> configurer.addCustomResolver(new ReactivePageableHandlerMethodArgumentResolver()))
-            .formatters(registry -> {
-                DateTimeFormatterRegistrar registrar = new DateTimeFormatterRegistrar();
-                registrar.setUseIsoFormat(true);
-                registrar.registerFormatters(registry);
-            })
-            .build();
-    }
 
     @BeforeEach
     public void initTest() {

@@ -5,7 +5,7 @@
       "nativeLanguage": "en",
       "microservicePath": "../blog"
     },
-    "jhipsterVersion": "6.6.0",
+    "jhipsterVersion": "6.7.1",
     "applicationType": "gateway",
     "baseName": "jhipster",
     "packageName": "com.mycompany.myapp",

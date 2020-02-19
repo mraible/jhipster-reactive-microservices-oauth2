@@ -1,7 +1,7 @@
 version: '2'
 services:
   jhipster-mongodb:
-    image: mongo:4.0.15
+    image: mongo:4.0.16
     ports:
       - '27017:27017'
     # volumes:

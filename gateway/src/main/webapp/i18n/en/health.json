@@ -15,11 +15,11 @@
       "refreshScope": "Microservice Refresh Scope",
       "clientConfigServer": "Microservice Config Server",
       "hystrix": "Hystrix",
+      "reactiveDiscoveryClients": "Microservice Discovery Clients",
       "diskSpace": "Disk space",
       "mail": "Email",
       "ping": "Application",
-      "mongo": "MongoDB",
-      "reactiveDiscoveryClients": "Microservice Discovery Clients"
+      "mongo": "MongoDB"
     },
     "table": {
       "service": "Service name",

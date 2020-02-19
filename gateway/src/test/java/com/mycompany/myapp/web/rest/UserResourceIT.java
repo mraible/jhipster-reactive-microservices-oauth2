@@ -2,32 +2,34 @@ package com.mycompany.myapp.web.rest;
 
 import com.mycompany.myapp.JhipsterApp;
 import com.mycompany.myapp.config.TestSecurityConfiguration;
-import com.mycompany.myapp.config.ReactivePageableHandlerMethodArgumentResolver;
 import com.mycompany.myapp.domain.Authority;
 import com.mycompany.myapp.domain.User;
 import com.mycompany.myapp.repository.UserRepository;
 import com.mycompany.myapp.security.AuthoritiesConstants;
-
-import com.mycompany.myapp.service.UserService;
 import com.mycompany.myapp.service.dto.UserDTO;
 import com.mycompany.myapp.service.mapper.UserMapper;
-import com.mycompany.myapp.web.rest.errors.ExceptionTranslator;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 /**
  * Integration tests for the {@link UserResource} REST controller.
  */
+@AutoConfigureWebTestClient
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 @SpringBootTest(classes = {JhipsterApp.class, TestSecurityConfiguration.class})
 public class UserResourceIT {
 
@@ -49,26 +51,16 @@ public class UserResourceIT {
     private UserRepository userRepository;
 
     @Autowired
-    private UserService userService;
-
-    @Autowired
     private UserMapper userMapper;
 
     @Autowired
-    private ExceptionTranslator exceptionTranslator;
-
     private WebTestClient webTestClient;
 
     private User user;
 
     @BeforeEach
-    public void setup() {
-        UserResource userResource = new UserResource(userService);
-
-        this.webTestClient = WebTestClient.bindToController(userResource)
-            .argumentResolvers(configurer -> configurer.addCustomResolver(new ReactivePageableHandlerMethodArgumentResolver()))
-            .controllerAdvice(exceptionTranslator)
-            .build();
+    public void setupCsrf() {
+        webTestClient = webTestClient.mutateWith(csrf());
     }
 
     /**
@@ -254,5 +246,9 @@ public class UserResourceIT {
         authorityB.setName(AuthoritiesConstants.USER);
         assertThat(authorityA).isEqualTo(authorityB);
         assertThat(authorityA.hashCode()).isEqualTo(authorityB.hashCode());
+    }
+
+    private void assertPersistedUsers(Consumer<List<User>> userAssertion) {
+        userAssertion.accept(userRepository.findAll().collectList().block());
     }
 }
