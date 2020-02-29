@@ -33,6 +33,7 @@ import static org.springframework.security.test.web.reactive.server.SecurityMock
 @WithMockUser(value = TEST_USER_LOGIN)
 @SpringBootTest(classes = {JhipsterApp.class, TestSecurityConfiguration.class})
 public class AccountResourceIT {
+
     static final String TEST_USER_LOGIN = "test";
 
     private OidcIdToken idToken;

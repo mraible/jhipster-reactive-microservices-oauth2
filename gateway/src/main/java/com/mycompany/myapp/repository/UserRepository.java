@@ -21,6 +21,8 @@ public interface UserRepository extends ReactiveMongoRepository<User, String> {
 
     Mono<User> findOneByLogin(String login);
 
+
+
     Flux<User> findAllByLoginNot(Pageable pageable, String login);
 
     Mono<Long> countAllByLoginNot(String anonymousUser);
