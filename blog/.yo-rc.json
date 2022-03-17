@@ -36,6 +36,7 @@
     "languages": ["en"],
     "blueprints": [],
     "skipClient": true,
-    "skipUserManagement": true
+    "skipUserManagement": true,
+    "reactive": true
   }
 }

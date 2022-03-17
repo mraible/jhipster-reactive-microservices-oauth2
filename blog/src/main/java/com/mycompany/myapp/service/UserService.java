@@ -10,13 +10,14 @@ import com.mycompany.myapp.service.dto.UserDTO;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.*;
@@ -48,10 +49,10 @@ public class UserService {
      * @param langKey   language key.
      * @param imageUrl  image URL of user.
      */
-    public void updateUser(String firstName, String lastName, String email, String langKey, String imageUrl) {
-        SecurityUtils.getCurrentUserLogin()
+    public Mono<Void> updateUser(String firstName, String lastName, String email, String langKey, String imageUrl) {
+        return SecurityUtils.getCurrentUserLogin()
             .flatMap(userRepository::findOneByLogin)
-            .ifPresent(user -> {
+            .flatMap(user -> {
                 user.setFirstName(firstName);
                 user.setLastName(lastName);
                 if (email != null) {
@@ -59,9 +60,10 @@ public class UserService {
                 }
                 user.setLangKey(langKey);
                 user.setImageUrl(imageUrl);
-                userRepository.save(user);
-                log.debug("Changed Information for User: {}", user);
-            });
+                return updateUser(user);
+            })
+            .doOnNext(user -> log.debug("Changed Information for User: {}", user))
+            .then();
     }
 
     /**
@@ -70,12 +72,9 @@ public class UserService {
      * @param userDTO user to update.
      * @return updated user.
      */
-    public Optional<UserDTO> updateUser(UserDTO userDTO) {
-        return Optional.of(userRepository
-            .findById(userDTO.getId()))
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .map(user -> {
+    public Mono<UserDTO> updateUser(UserDTO userDTO) {
+        return userRepository.findById(userDTO.getId())
+            .flatMap(user -> {
                 user.setLogin(userDTO.getLogin().toLowerCase());
                 user.setFirstName(userDTO.getFirstName());
                 user.setLastName(userDTO.getLastName());
@@ -87,38 +86,59 @@ public class UserService {
                 user.setLangKey(userDTO.getLangKey());
                 Set<Authority> managedAuthorities = user.getAuthorities();
                 managedAuthorities.clear();
-                userDTO.getAuthorities().stream()
-                    .map(authorityRepository::findById)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .forEach(managedAuthorities::add);
-                userRepository.save(user);
-                log.debug("Changed Information for User: {}", user);
-                return user;
+                return Flux.fromIterable(userDTO.getAuthorities())
+                    .flatMap(authorityRepository::findById)
+                    .map(managedAuthorities::add)
+                    .then(Mono.just(user));
             })
+            .flatMap(this::updateUser)
+            .doOnNext(user -> log.debug("Changed Information for User: {}", user))
             .map(UserDTO::new);
     }
 
-    public void deleteUser(String login) {
-        userRepository.findOneByLogin(login).ifPresent(user -> {
-            userRepository.delete(user);
-            log.debug("Deleted User: {}", user);
-        });
+    private Mono<User> updateUser(User user) {
+        return SecurityUtils.getCurrentUserLogin()
+            .switchIfEmpty(Mono.just(Constants.SYSTEM_ACCOUNT))
+            .flatMap(login -> {
+                user.setLastModifiedBy(login);
+                return userRepository.save(user);
+            });
     }
 
-    public Page<UserDTO> getAllManagedUsers(Pageable pageable) {
+    private Mono<User> createUser(User user) {
+        return SecurityUtils.getCurrentUserLogin()
+            .switchIfEmpty(Mono.just(Constants.SYSTEM_ACCOUNT))
+            .flatMap(login -> {
+                user.setCreatedBy(login);
+                user.setLastModifiedBy(login);
+                return userRepository.save(user);
+            });
+    }
+
+    public Mono<Void> deleteUser(String login) {
+        return userRepository.findOneByLogin(login)
+            .flatMap(user -> userRepository.delete(user).thenReturn(user))
+            .doOnNext(user -> log.debug("Deleted User: {}", user))
+            .then();
+    }
+
+    public Flux<UserDTO> getAllManagedUsers(Pageable pageable) {
         return userRepository.findAllByLoginNot(pageable, Constants.ANONYMOUS_USER).map(UserDTO::new);
     }
 
-    public Optional<User> getUserWithAuthoritiesByLogin(String login) {
+    public Mono<Long> countManagedUsers() {
+        return userRepository.countAllByLoginNot(Constants.ANONYMOUS_USER);
+    }
+
+    public Mono<User> getUserWithAuthoritiesByLogin(String login) {
         return userRepository.findOneByLogin(login);
     }
 
-    public Optional<User> getUserWithAuthorities(String id) {
+    public Mono<User> getUserWithAuthorities(String id) {
         return userRepository.findById(id);
     }
 
-    public Optional<User> getUserWithAuthorities() {
+    public Mono<User> getUserWithAuthorities() {
         return SecurityUtils.getCurrentUserLogin().flatMap(userRepository::findOneByLogin);
     }
 
@@ -126,46 +146,50 @@ public class UserService {
      * Gets a list of all the authorities.
      * @return a list of all the authorities.
      */
-    public List<String> getAuthorities() {
-        return authorityRepository.findAll().stream().map(Authority::getName).collect(Collectors.toList());
+    public Flux<String> getAuthorities() {
+        return authorityRepository.findAll().map(Authority::getName);
     }
 
-    private User syncUserWithIdP(Map<String, Object> details, User user) {
+    private Mono<User> syncUserWithIdP(Map<String, Object> details, User user) {
         // save authorities in to sync user roles/groups between IdP and JHipster's local database
-        Collection<String> dbAuthorities = getAuthorities();
         Collection<String> userAuthorities =
             user.getAuthorities().stream().map(Authority::getName).collect(Collectors.toList());
-        for (String authority : userAuthorities) {
-            if (!dbAuthorities.contains(authority)) {
-                log.debug("Saving authority '{}' in local database", authority);
-                Authority authorityToSave = new Authority();
-                authorityToSave.setName(authority);
-                authorityRepository.save(authorityToSave);
-            }
-        }
-        // save account in to sync users between IdP and JHipster's local database
-        Optional<User> existingUser = userRepository.findOneByLogin(user.getLogin());
-        if (existingUser.isPresent()) {
-            // if IdP sends last updated information, use it to determine if an update should happen
-            if (details.get("updated_at") != null) {
-                Instant dbModifiedDate = existingUser.get().getLastModifiedDate();
-                Instant idpModifiedDate = new Date(Long.valueOf((Integer) details.get("updated_at"))).toInstant();
-                if (idpModifiedDate.isAfter(dbModifiedDate)) {
+
+        return getAuthorities().collectList()
+            .flatMapMany(dbAuthorities -> {
+                List<Authority> authoritiesToSave = userAuthorities.stream()
+                    .filter(authority -> !dbAuthorities.contains(authority))
+                    .map(authority -> {
+                        Authority authorityToSave = new Authority();
+                        authorityToSave.setName(authority);
+                        return authorityToSave;
+                    })
+                    .collect(Collectors.toList());
+                return Flux.fromIterable(authoritiesToSave);
+            })
+            .doOnNext(authority -> log.debug("Saving authority '{}' in local database", authority))
+            .flatMap(authorityRepository::save)
+            .then(userRepository.findOneByLogin(user.getLogin()))
+            .switchIfEmpty(userRepository.save(user))
+            .flatMap(existingUser -> {
+                // if IdP sends last updated information, use it to determine if an update should happen
+                if (details.get("updated_at") != null) {
+                    Instant dbModifiedDate = existingUser.getLastModifiedDate();
+                    Instant idpModifiedDate = Date.from((Instant) details.get("updated_at")).toInstant();
+                    if (idpModifiedDate.isAfter(dbModifiedDate)) {
+                        log.debug("Updating user '{}' in local database", user.getLogin());
+                        return updateUser(user.getFirstName(), user.getLastName(), user.getEmail(),
+                            user.getLangKey(), user.getImageUrl());
+                    }
+                    // no last updated info, blindly update
+                } else {
                     log.debug("Updating user '{}' in local database", user.getLogin());
-                    updateUser(user.getFirstName(), user.getLastName(), user.getEmail(),
+                    return updateUser(user.getFirstName(), user.getLastName(), user.getEmail(),
                         user.getLangKey(), user.getImageUrl());
                 }
-                // no last updated info, blindly update
-            } else {
-                log.debug("Updating user '{}' in local database", user.getLogin());
-                updateUser(user.getFirstName(), user.getLastName(), user.getEmail(),
-                    user.getLangKey(), user.getImageUrl());
-            }
-        } else {
-            log.debug("Saving user '{}' in local database", user.getLogin());
-            userRepository.save(user);
-        }
-        return user;
+                return Mono.empty();
+            })
+            .thenReturn(user);
     }
 
     /**
@@ -175,7 +199,7 @@ public class UserService {
      * @param authToken the authentication token.
      * @return the user from the authentication.
      */
-    public UserDTO getUserFromAuthentication(AbstractAuthenticationToken authToken) {
+    public Mono<UserDTO> getUserFromAuthentication(AbstractAuthenticationToken authToken) {
         Map<String, Object> attributes;
         if (authToken instanceof OAuth2AuthenticationToken) {
             attributes = ((OAuth2AuthenticationToken) authToken).getPrincipal().getAttributes();
@@ -193,7 +217,7 @@ public class UserService {
                 return auth;
             })
             .collect(Collectors.toSet()));
-        return new UserDTO(syncUserWithIdP(attributes, user));
+        return syncUserWithIdP(attributes, user).flatMap(u -> Mono.just(new UserDTO(u)));
     }
 
     private static User getUser(Map<String, Object> details) {
